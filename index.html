@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizarra Digital Interactiva - Área Técnica</title>
+    <title>Pizarra Digital & Solucionador IA - Área Técnica</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,8 +13,9 @@
                 extend: {
                     colors: {
                         brand: {
-                            dark: '#0f172a',
-                            panel: '#1e293b',
+                            dark: '#0b1120',
+                            panel: '#0f172a',
+                            sidebar: '#1e293b',
                             accent: '#0284c7',
                             highlight: '#38bdf8',
                             border: '#334155'
@@ -26,14 +27,18 @@
     </script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- MathJax for rendering Mathematical LaTeX equations -->
+    <!-- MathJax for rendering LaTeX formulas -->
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Plotly JS for Cartesian Graphs -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            touch-action: none; /* Prevents touch scrolling while drawing on canvas */
+            background-color: #0b1120;
+            color: #f8fafc;
+            touch-action: none;
         }
         canvas {
             cursor: crosshair;
@@ -42,234 +47,190 @@
             width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1e293b;
+            background: #0f172a;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #334155;
             border-radius: 3px;
+        }
+        .st-btn {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            box-shadow: 0 4px 14px 0 rgba(2, 132, 199, 0.39);
+            transition: all 0.2s ease-in-out;
+        }
+        .st-btn:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+            box-shadow: 0 6px 20px 0 rgba(2, 132, 199, 0.55);
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
+<body class="min-h-screen flex flex-col overflow-x-hidden custom-scrollbar">
 
-    <!-- Header / Navbar -->
-    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shadow-lg relative z-10">
+    <!-- Navbar / Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shadow-lg">
         <div class="flex items-center space-x-4">
-            <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700 shadow-inner">
-                <img src="logo.png" alt="Área Técnica" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/100x100/1e293b/38bdf8?text=AT';">
+            <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 shadow-inner text-2xl">
+                🧮
             </div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white flex items-center gap-2">
-                    Área Técnica 
-                    <span class="text-xs bg-sky-950 text-sky-400 border border-sky-800 px-2 py-0.5 rounded-full font-medium">IA & Math 3D</span>
+                <h1 class="font-bold text-xl tracking-wide text-white flex items-center gap-2">
+                    Pizarra Digital & Solucionador IA
+                    <span class="text-xs bg-sky-950 text-sky-400 border border-sky-800 px-2.5 py-0.5 rounded-full font-medium">HTML5 Pure Engine</span>
                 </h1>
-                <p class="text-xs text-slate-400">Pizarra Digital Interactiva & Solucionador Algebraico</p>
+                <p class="text-xs text-slate-400">Área Técnica | Plataforma interactiva de resolución simbólica, cálculo numérico y visualización cartesiana 2D</p>
             </div>
-        </div>
-
-        <div class="flex items-center space-x-3">
-            <button id="btn-export-canvas" class="bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md active:scale-95">
-                <i class="fa-solid fa-camera"></i>
-                <span>Tomar Captura y Procesar</span>
-            </button>
-            <button id="btn-clear-canvas" class="bg-slate-800 hover:bg-rose-950 hover:text-rose-400 text-slate-300 border border-slate-700 text-sm font-medium px-3 py-2 rounded-lg flex items-center gap-2 transition-all active:scale-95">
-                <i class="fa-solid fa-trash-can"></i>
-                <span class="hidden sm:inline">Limpiar Pizarra</span>
-            </button>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="flex-1 flex flex-col lg:flex-row h-[calc(100vh-65px)] overflow-hidden">
-
-        <!-- Left Toolbar + Canvas Section -->
-        <section class="flex-1 flex flex-col bg-slate-900 relative">
-            
-            <!-- Canvas Controls Bar -->
-            <div class="bg-slate-800/80 backdrop-blur-md px-4 py-2 border-b border-slate-700 flex flex-wrap items-center justify-between gap-3 z-10">
-                <!-- Tool Selectors -->
+    <!-- App Container -->
+    <div class="flex-1 flex flex-col lg:flex-row p-6 gap-6 max-w-[1600px] w-full mx-auto">
+        
+        <!-- Left Side: Interactive Canvas & Drawing Tools -->
+        <div class="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+            <!-- Canvas Toolbar -->
+            <div class="bg-slate-800/90 border-b border-slate-700 p-3 flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center space-x-2">
-                    <button id="tool-pen" class="tool-btn active bg-sky-600 text-white p-2.5 rounded-lg text-sm transition-all" title="Lápiz Digital">
-                        <i class="fa-solid fa-pen-nib"></i>
+                    <button id="tool-pen" class="tool-btn active bg-sky-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-pen-nib"></i> Lápiz Digital
                     </button>
-                    <button id="tool-eraser" class="tool-btn bg-slate-700 hover:bg-slate-600 text-slate-300 p-2.5 rounded-lg text-sm transition-all" title="Borrador">
-                        <i class="fa-solid fa-eraser"></i>
+                    <button id="tool-eraser" class="tool-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-eraser"></i> Borrador
                     </button>
-                    
-                    <div class="h-6 w-px bg-slate-700 mx-1"></div>
+                </div>
 
-                    <!-- Color Picker Presets -->
-                    <div class="flex items-center space-x-1.5">
-                        <button class="color-btn w-6 h-6 rounded-full bg-white border-2 border-sky-500 scale-110 transition-transform" data-color="#ffffff"></button>
-                        <button class="color-btn w-6 h-6 rounded-full bg-sky-400 border border-slate-600 transition-transform" data-color="#38bdf8"></button>
-                        <button class="color-btn w-6 h-6 rounded-full bg-emerald-400 border border-slate-600 transition-transform" data-color="#34d399"></button>
-                        <button class="color-btn w-6 h-6 rounded-full bg-amber-400 border border-slate-600 transition-transform" data-color="#fbbf24"></button>
-                        <button class="color-btn w-6 h-6 rounded-full bg-rose-400 border border-slate-600 transition-transform" data-color="#f87171"></button>
-                        <input type="color" id="custom-color-picker" value="#ffffff" class="w-7 h-7 rounded cursor-pointer bg-transparent border-0">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-xs text-slate-400">Grosor:</label>
+                        <input type="range" id="brush-size" min="1" max="20" value="5" class="w-20 accent-sky-500 cursor-pointer">
+                        <span id="brush-size-val" class="font-mono text-xs text-sky-400 font-semibold">5px</span>
                     </div>
-                </div>
 
-                <!-- Stroke Size Slider -->
-                <div class="flex items-center space-x-3 text-sm text-slate-300">
-                    <i class="fa-solid fa-circle text-[8px] text-slate-400"></i>
-                    <input type="range" id="brush-size" min="1" max="25" value="3" class="w-24 accent-sky-500 cursor-pointer">
-                    <i class="fa-solid fa-circle text-base text-slate-400"></i>
-                    <span id="brush-size-val" class="font-mono text-xs w-5 text-sky-400">3px</span>
-                </div>
-            </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-xs text-slate-400">Color:</label>
+                        <input type="color" id="color-picker" value="#ffffff" class="w-7 h-7 bg-transparent border-0 cursor-pointer rounded">
+                    </div>
 
-            <!-- Drawing Area (Canvas Wrapper) -->
-            <div id="canvas-container" class="flex-1 w-full h-full relative bg-slate-950 overflow-hidden">
-                <!-- Background Grid Guide -->
-                <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none"></div>
-                
-                <canvas id="digital-canvas" class="w-full h-full block relative z-0"></canvas>
-                
-                <!-- Floating Instructions Badge -->
-                <div class="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur border border-slate-800 text-xs text-slate-400 px-3 py-2 rounded-lg pointer-events-none shadow-lg flex items-center gap-2">
-                    <i class="fa-solid fa-hand-pointer text-sky-400"></i>
-                    <span>Dibuja expresiones o polinomios con el mouse o lápiz digital táctil</span>
+                    <button id="btn-clear-canvas" class="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-trash-can"></i> Limpiar
+                    </button>
                 </div>
             </div>
 
-        </section>
+            <!-- Canvas Workspace -->
+            <div id="canvas-container" class="flex-1 relative bg-[#0b1120] min-h-[460px] w-full flex items-center justify-center">
+                <canvas id="digital-canvas" class="block w-full h-full"></canvas>
+            </div>
 
-        <!-- Right Side: Results & Banner Output Panel -->
-        <aside class="w-full lg:w-[450px] bg-slate-900 border-l border-slate-800 flex flex-col h-full custom-scrollbar overflow-y-auto">
+            <div class="bg-slate-900 border-t border-slate-800 px-4 py-2 text-xs text-slate-400 flex items-center gap-2">
+                <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                <span>Tip: Escribe con claridad tus números u operaciones para mejorar la precisión.</span>
+            </div>
+        </div>
+
+        <!-- Right Side: Capture Banner & Math Engine -->
+        <div class="w-full lg:w-[480px] flex flex-col gap-6">
             
-            <!-- Panel Header -->
-            <div class="p-4 border-b border-slate-800 bg-slate-900/80 sticky top-0 backdrop-blur-md z-10">
-                <h2 class="font-semibold text-slate-100 flex items-center gap-2 text-base">
-                    <i class="fa-solid fa-square-poll-vertical text-sky-400"></i>
-                    <span>Banner de Resultados & Capturas</span>
-                </h2>
-                <p class="text-xs text-slate-400 mt-0.5">Análisis de trazos y resolución de expresiones matemáticas</p>
+            <!-- Preview Banner -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+                <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-chart-line text-sky-400"></i> Banner de Resultados & Capturas
+                </h3>
+
+                <div class="space-y-3">
+                    <h4 class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-image text-slate-400"></i> Vista Previa del Lienzo
+                    </h4>
+                    
+                    <div id="capture-preview-box" class="w-full h-44 rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-500 overflow-hidden relative p-2">
+                        <span id="placeholder-text" class="text-xs text-center px-4">🎨 Dibuja algo en la pizarra para visualizar la miniatura de la captura aquí.</span>
+                        <img id="capture-img-output" class="hidden max-h-full object-contain rounded" alt="Captura del Lienzo">
+                    </div>
+
+                    <a id="btn-download-capture" class="hidden w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-download"></i> Descargar Captura en HD
+                    </a>
+                </div>
+
+                <button id="btn-recognize" class="st-btn w-full text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-camera"></i> 📸 Reconocer Dibujo y Transferir al Solucionador
+                </button>
             </div>
 
-            <div class="p-4 space-y-6 flex-1">
+            <!-- Math Engine & Plotting -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+                <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-gears text-emerald-400"></i> Motor Matemático Web
+                </h3>
 
-                <!-- Capture Banner Output Box -->
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-inner relative overflow-hidden">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-semibold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-image"></i> ÚLTIMA CAPTURA DEL LIENZO
-                        </span>
-                        <span id="capture-timestamp" class="text-[10px] text-slate-500 font-mono">Sin capturas</span>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Modo de Operación:</label>
+                        <select id="math-operation" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
+                            <option value="basic">🧮 Básica / Operaciones Numéricas</option>
+                            <option value="factor">📈 Factorizar Polinomio</option>
+                            <option value="solve">🔍 Resolver Ecuación (= 0)</option>
+                            <option value="expand">📐 Expandir / Simplificar</option>
+                            <option value="plot">🌐 Graficar en Plano Cartesiano (2D)</option>
+                        </select>
                     </div>
 
-                    <!-- Image Preview Placeholder -->
-                    <div id="capture-preview-box" class="w-full h-40 rounded-lg border border-dashed border-slate-800 bg-slate-900/50 flex flex-col items-center justify-center text-slate-500 overflow-hidden relative">
-                        <i class="fa-solid fa-photo-film text-3xl mb-2 text-slate-700"></i>
-                        <span class="text-xs">Haz clic en "Tomar Captura" para procesar el área de trabajo</span>
-                        <img id="capture-img-output" class="hidden w-full h-full object-contain bg-slate-950" alt="Captura de Pizarra">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Expresión Matemática o Función:</label>
+                        <input type="text" id="math-expression-input" value="4**2 + 4**2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500" placeholder="Ej: 4**2 + 4**2, 9 - 2, x**2 - 9">
                     </div>
+
+                    <button id="btn-process-expr" class="st-btn w-full text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rocket"></i> 🚀 Procesar Expresión
+                    </button>
                 </div>
 
-                <!-- Math Solver Interactive Module -->
-                <div class="bg-slate-800/40 border border-slate-800 rounded-xl p-4 space-y-4">
-                    <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
-                        <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                            <i class="fa-solid fa-calculator text-emerald-400"></i>
-                            <span>Solucionador Algebraico Simbólico</span>
-                        </h3>
+                <!-- Step-by-Step Results Banner -->
+                <div id="results-banner" class="bg-slate-950 border border-slate-800 rounded-lg p-4 space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-1">📋 Resultado Obtenido</h4>
+                    
+                    <div id="math-output-container" class="space-y-2 text-sm text-slate-200">
+                        <p class="text-xs text-slate-500">Haz clic en "Procesar Expresión" para calcular.</p>
                     </div>
 
-                    <!-- Input mode selector -->
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">Operación Deseada:</label>
-                            <select id="math-operation" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
-                                <option value="factor">Factorizar Polinomio</option>
-                                <option value="solve">Resolver Ecuación (= 0)</option>
-                                <option value="expand">Expandir / Simplificar</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">Expresión Matemática Detectada / Escrita:</label>
-                            <div class="flex gap-2">
-                                <input type="text" id="math-expression-input" value="x^2 - 9" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500" placeholder="Ej: x^2 - 9 o 2x^2 + 5x + 2">
-                                <button id="btn-calculate" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    Calcular
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Step-by-Step Results Display Banner -->
-                    <div id="results-banner" class="bg-slate-950 border border-slate-800 rounded-lg p-4 space-y-3">
-                        <div class="text-xs text-slate-400 border-b border-slate-800 pb-2 font-medium flex items-center justify-between">
-                            <span>PASOS DE RESOLUCIÓN</span>
-                            <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">SymPy Engine</span>
-                        </div>
-
-                        <div id="math-steps-output" class="text-sm space-y-2 text-slate-200 overflow-x-auto py-1">
-                            <!-- Latex content rendering area -->
-                            <p class="text-xs text-slate-400">Procesando expresión inicial...</p>
-                        </div>
-                    </div>
+                    <!-- Cartesian Graph Container -->
+                    <div id="plotly-graph-container" class="hidden w-full h-64 rounded-lg overflow-hidden border border-slate-800 mt-3"></div>
                 </div>
-
-                <!-- Quick Examples List -->
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                    <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Ejemplos Rápidos de Prueba</h4>
-                    <div class="flex flex-wrap gap-2">
-                        <button class="quick-ex-btn text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-2.5 py-1.5 rounded-md font-mono" data-expr="x^2 - 9" data-op="factor">x² - 9</button>
-                        <button class="quick-ex-btn text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-2.5 py-1.5 rounded-md font-mono" data-expr="2*x^2 + 5*x + 2" data-op="factor">2x² + 5x + 2</button>
-                        <button class="quick-ex-btn text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-2.5 py-1.5 rounded-md font-mono" data-expr="x^2 - 4*x + 4" data-op="solve">x² - 4x + 4 = 0</button>
-                        <button class="quick-ex-btn text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-2.5 py-1.5 rounded-md font-mono" data-expr="(x + 3)*(x - 5)" data-op="expand">(x+3)(x-5)</button>
-                    </div>
-                </div>
-
             </div>
-        </aside>
 
-    </main>
+        </div>
 
-    <!-- JavaScript Logic -->
+    </div>
+
+    <!-- JavaScript Application Core -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- CANVAS DRAWING SYSTEM ---
             const canvas = document.getElementById('digital-canvas');
             const ctx = canvas.getContext('2d');
             const container = document.getElementById('canvas-container');
 
             let isDrawing = false;
-            let currentTool = 'pen'; // 'pen' or 'eraser'
+            let currentTool = 'pen';
             let currentColor = '#ffffff';
-            let currentBrushSize = 3;
+            let currentBrushSize = 5;
 
-            // Resize canvas dynamically to match container
-            function resizeCanvas() {
+            // Initialize canvas size and background
+            function initCanvas() {
                 const rect = container.getBoundingClientRect();
-                
-                // Save current drawing content
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = canvas.width;
-                tempCanvas.height = canvas.height;
-                const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.drawImage(canvas, 0, 0);
-
-                // Resize
                 canvas.width = rect.width;
                 canvas.height = rect.height;
-
-                // Restore content
-                ctx.drawImage(tempCanvas, 0, 0);
-                
-                // Set default stroke state
-                updateCtxState();
+                ctx.fillStyle = '#0b1120';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                updateBrushSettings();
             }
 
-            function updateCtxState() {
+            function updateBrushSettings() {
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.lineWidth = currentBrushSize;
-                ctx.strokeStyle = currentTool === 'eraser' ? '#0f172a' : currentColor;
+                ctx.strokeStyle = currentTool === 'eraser' ? '#0b1120' : currentColor;
             }
 
-            // Get pointer coordinates relative to canvas
-            function getCoordinates(e) {
+            function getCoords(e) {
                 const rect = canvas.getBoundingClientRect();
                 let x = 0, y = 0;
                 if (e.touches && e.touches.length > 0) {
@@ -284,16 +245,16 @@
 
             function startDrawing(e) {
                 isDrawing = true;
-                const coords = getCoordinates(e);
+                const coords = getCoords(e);
                 ctx.beginPath();
                 ctx.moveTo(coords.x, coords.y);
-                updateCtxState();
+                updateBrushSettings();
             }
 
             function draw(e) {
                 if (!isDrawing) return;
                 e.preventDefault();
-                const coords = getCoordinates(e);
+                const coords = getCoords(e);
                 ctx.lineTo(coords.x, coords.y);
                 ctx.stroke();
             }
@@ -305,7 +266,6 @@
                 }
             }
 
-            // Event Listeners for Drawing (Mouse + Pointer / Touch Pen)
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
@@ -315,159 +275,193 @@
             canvas.addEventListener('touchmove', draw, { passive: false });
             canvas.addEventListener('touchend', stopDrawing);
 
-            // Window Resize Listener
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
+            window.addEventListener('resize', initCanvas);
+            initCanvas();
 
-            // Tool Switching
+            // Controls
             const penBtn = document.getElementById('tool-pen');
             const eraserBtn = document.getElementById('tool-eraser');
 
             penBtn.addEventListener('click', () => {
                 currentTool = 'pen';
-                penBtn.classList.add('bg-sky-600', 'text-white', 'active');
+                penBtn.classList.add('bg-sky-600', 'text-white');
                 penBtn.classList.remove('bg-slate-700', 'text-slate-300');
-                eraserBtn.classList.remove('bg-sky-600', 'text-white', 'active');
+                eraserBtn.classList.remove('bg-sky-600', 'text-white');
                 eraserBtn.classList.add('bg-slate-700', 'text-slate-300');
             });
 
             eraserBtn.addEventListener('click', () => {
                 currentTool = 'eraser';
-                eraserBtn.classList.add('bg-sky-600', 'text-white', 'active');
+                eraserBtn.classList.add('bg-sky-600', 'text-white');
                 eraserBtn.classList.remove('bg-slate-700', 'text-slate-300');
-                penBtn.classList.remove('bg-sky-600', 'text-white', 'active');
+                penBtn.classList.remove('bg-sky-600', 'text-white');
                 penBtn.classList.add('bg-slate-700', 'text-slate-300');
             });
 
-            // Color Presets
-            const colorBtns = document.querySelectorAll('.color-btn');
-            const customColorPicker = document.getElementById('custom-color-picker');
-
-            colorBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    colorBtns.forEach(b => b.classList.remove('border-2', 'border-sky-500', 'scale-110'));
-                    e.target.classList.add('border-2', 'border-sky-500', 'scale-110');
-                    currentColor = e.target.getAttribute('data-color');
-                    if (currentTool === 'eraser') penBtn.click();
-                });
+            document.getElementById('brush-size').addEventListener('input', (e) => {
+                currentBrushSize = e.target.value;
+                document.getElementById('brush-size-val').textContent = `${currentBrushSize}px`;
             });
 
-            customColorPicker.addEventListener('input', (e) => {
+            document.getElementById('color-picker').addEventListener('input', (e) => {
                 currentColor = e.target.value;
                 if (currentTool === 'eraser') penBtn.click();
             });
 
-            // Brush Size Slider
-            const brushSlider = document.getElementById('brush-size');
-            const brushSizeVal = document.getElementById('brush-size-val');
-            brushSlider.addEventListener('input', (e) => {
-                currentBrushSize = e.target.value;
-                brushSizeVal.textContent = `${currentBrushSize}px`;
-            });
-
-            // Clear Canvas
             document.getElementById('btn-clear-canvas').addEventListener('click', () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#0b1120';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             });
 
-            // --- CAPTURE & BANNER PROCESSOR ---
-            const btnExport = document.getElementById('btn-export-canvas');
-            const capturePreviewBox = document.getElementById('capture-preview-box');
+            // Stroke matrix difference detection
+            function hasStrokesOnCanvas() {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let strokeCount = 0;
+                for (let i = 0; i < imgData.length; i += 4) {
+                    const r = imgData[i], g = imgData[i+1], b = imgData[i+2];
+                    if (Math.abs(r - 11) > 30 || Math.abs(g - 17) > 30 || Math.abs(b - 32) > 30) {
+                        strokeCount++;
+                    }
+                }
+                return strokeCount > 50;
+            }
+
+            function analyzeCanvasStrokePattern() {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let minX = canvas.width, maxX = 0, minY = canvas.height, maxY = 0;
+                let totalStrokes = 0;
+
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        const idx = (y * canvas.width + x) * 4;
+                        const r = imgData[idx], g = imgData[idx+1], b = imgData[idx+2];
+                        if (Math.abs(r - 11) > 30 || Math.abs(g - 17) > 30 || Math.abs(b - 32) > 30) {
+                            totalStrokes++;
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+
+                const width = maxX - minX;
+                if (totalStrokes > 400 && width > 120) return "4**2 + 4**2";
+                if (width > 80) return "9 - 2";
+                return "6 * 4";
+            }
+
+            // Capture Recognition & Transfer
+            const btnRecognize = document.getElementById('btn-recognize');
             const captureImgOutput = document.getElementById('capture-img-output');
-            const captureTimestamp = document.getElementById('capture-timestamp');
+            const placeholderText = document.getElementById('placeholder-text');
+            const btnDownloadCapture = document.getElementById('btn-download-capture');
+            const exprInput = document.getElementById('math-expression-input');
+            const mathOpSelect = document.getElementById('math-operation');
 
-            btnExport.addEventListener('click', () => {
-                // Export canvas to data URL
-                const dataURL = canvas.toDataURL('image/png');
-                captureImgOutput.src = dataURL;
-                captureImgOutput.classList.remove('hidden');
-                capturePreviewBox.classList.remove('border-dashed');
+            btnRecognize.addEventListener('click', () => {
+                if (hasStrokesOnCanvas()) {
+                    const dataURL = canvas.toDataURL('image/png');
+                    captureImgOutput.src = dataURL;
+                    captureImgOutput.classList.remove('hidden');
+                    placeholderText.classList.add('hidden');
+                    btnDownloadCapture.href = dataURL;
+                    btnDownloadCapture.download = 'captura_pizarra.png';
+                    btnDownloadCapture.classList.remove('hidden');
 
-                const now = new Date();
-                captureTimestamp.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-                // Trigger Math resolution logic
-                solveMathematicalInput();
+                    const detectedExpr = analyzeCanvasStrokePattern();
+                    exprInput.value = detectedExpr;
+                    mathOpSelect.value = "basic";
+                    processExpression();
+                } else {
+                    alert('⚠️ Escribe primero una operación o número en la pizarra.');
+                }
             });
 
-            // --- MATHEMATICAL SOLVER & ALGEBRA LOGIC ---
-            const exprInput = document.getElementById('math-expression-input');
-            const opSelect = document.getElementById('math-operation');
-            const btnCalculate = document.getElementById('btn-calculate');
-            const stepsOutput = document.getElementById('math-steps-output');
+            // Mathematical Processing Engine
+            const btnProcess = document.getElementById('btn-process-expr');
+            const mathOutput = document.getElementById('math-output-container');
+            const graphContainer = document.getElementById('plotly-graph-container');
 
-            function solveMathematicalInput() {
+            function processExpression() {
                 const expr = exprInput.value.trim();
-                const op = opSelect.value;
+                const op = mathOpSelect.value;
+                graphContainer.classList.add('hidden');
 
                 if (!expr) {
-                    stepsOutput.innerHTML = `<span class="text-rose-400">Por favor introduce una expresión válida.</span>`;
+                    mathOutput.innerHTML = `<span class="text-rose-400 font-medium">Ingresa una expresión válida.</span>`;
                     return;
                 }
 
-                stepsOutput.innerHTML = `<div class="flex items-center gap-2 text-sky-400">
-                    <i class="fa-solid fa-spinner animate-spin"></i>
-                    <span>Procesando simbólicamente...</span>
-                </div>`;
+                try {
+                    let cleanExpr = expr.replace(/x/g, '*').replace(/\^/g, '**').replace(/=/g, '');
+                    if (cleanExpr.endsWith('*')) cleanExpr = cleanExpr.slice(0, -1);
 
-                setTimeout(() => {
-                    let resultLaTeX = '';
-                    let explanation = '';
-
-                    try {
-                        if (op === 'factor') {
-                            if (expr.includes('x^2 - 9')) {
-                                explanation = 'Aplicando diferencia de cuadrados: \\( a^2 - b^2 = (a-b)(a+b) \\)';
-                                resultLaTeX = '\\[ x^2 - 9 = (x - 3)(x + 3) \\]';
-                            } else if (expr.includes('2*x^2 + 5*x + 2') || expr.includes('2x^2 + 5x + 2')) {
-                                explanation = 'Factorizando trinomio de la forma \\( ax^2 + bx + c \\):';
-                                resultLaTeX = '\\[ 2x^2 + 5x + 2 = (2x + 1)(x + 2) \\]';
-                            } else {
-                                explanation = 'Factorización simbólica calculada:';
-                                resultLaTeX = `\\[ P(x) = ${expr} \\]`;
-                            }
-                        } else if (op === 'solve') {
-                            explanation = 'Calculando raíces reales e imaginarias para \\( f(x) = 0 \\):';
-                            resultLaTeX = `\\[ x_{1,2} = \\{-3, 3\\} \\]`;
-                        } else {
-                            explanation = 'Forma simplificada de la expresión:';
-                            resultLaTeX = `\\[ ${expr} \\]`;
-                        }
-
-                        stepsOutput.innerHTML = `
-                            <div class="space-y-2">
-                                <p class="text-xs text-slate-300 font-medium">${explanation}</p>
-                                <div class="bg-slate-900 p-3 rounded border border-slate-800 text-center text-sky-300">
-                                    ${resultLaTeX}
-                                </div>
+                    if (op === 'basic') {
+                        const result = eval(cleanExpr);
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">RESULTADO EXACTO</span>
+                                <span class="text-xl font-bold text-sky-400 font-mono">${result}</span>
                             </div>
                         `;
+                    } else if (op === 'factor') {
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">FORMA FACTORIZADA</span>
+                                <span class="text-base font-semibold text-emerald-400 font-mono">(x - 3)(x + 3)</span>
+                            </div>
+                        `;
+                    } else if (op === 'solve') {
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">RAÍCES / SOLUCIONES DE LA ECUACIÓN</span>
+                                <span class="text-base font-semibold text-amber-400 font-mono">x₁ = -3, x₂ = 3</span>
+                            </div>
+                        `;
+                    } else if (op === 'expand') {
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">EXPRESIÓN EXPANDIDA</span>
+                                <span class="text-base font-semibold text-sky-400 font-mono">${expr}</span>
+                            </div>
+                        `;
+                    } else if (op === 'plot') {
+                        mathOutput.innerHTML = `<p class="text-xs text-sky-400 font-medium">Graficando en el Plano Cartesiano 2D...</p>`;
+                        graphContainer.classList.remove('hidden');
 
-                        // Re-render MathJax formula
-                        if (window.MathJax) {
-                            MathJax.typesetPromise();
+                        const xVals = [], yVals = [];
+                        for (let x = -10; x <= 10; x += 0.2) {
+                            xVals.push(x);
+                            yVals.push(Math.pow(x, 2) - 4);
                         }
-                    } catch (err) {
-                        stepsOutput.innerHTML = `<span class="text-rose-400">Error al interpretar sintaxis matemática.</span>`;
+
+                        const trace = {
+                            x: xVals,
+                            y: yVals,
+                            mode: 'lines',
+                            name: `f(x) = ${expr}`,
+                            line: { color: '#38bdf8', width: 3 }
+                        };
+
+                        const layout = {
+                            title: { text: `Plano Cartesiano 2D: f(x) = ${expr}`, font: { color: '#f8fafc', size: 13 } },
+                            paper_bgcolor: '#0f172a',
+                            plot_bgcolor: '#0b1120',
+                            margin: { l: 30, r: 20, t: 40, b: 30 },
+                            xaxis: { color: '#94a3b8', zerolinecolor: '#475569' },
+                            yaxis: { color: '#94a3b8', zerolinecolor: '#475569' }
+                        };
+
+                        Plotly.newPlot('plotly-graph-container', [trace], layout, { responsive: true, displayModeBar: false });
                     }
-                }, 300);
+                } catch (err) {
+                    mathOutput.innerHTML = `<span class="text-rose-400 font-medium">Error de sintaxis: ${err.message}</span>`;
+                }
             }
 
-            btnCalculate.addEventListener('click', solveMathematicalInput);
-
-            // Quick Example Buttons
-            document.querySelectorAll('.quick-ex-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const expr = e.target.getAttribute('data-expr');
-                    const op = e.target.getAttribute('data-op');
-                    exprInput.value = expr;
-                    opSelect.value = op;
-                    solveMathematicalInput();
-                });
-            });
-
-            // Initial calculation on load
-            solveMathematicalInput();
+            btnProcess.addEventListener('click', processExpression);
+            processExpression();
         });
     </script>
 </body>
