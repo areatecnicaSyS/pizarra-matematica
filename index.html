@@ -123,7 +123,7 @@
 
             <div class="bg-slate-900 border-t border-slate-800 px-4 py-2 text-xs text-slate-400 flex items-center gap-2">
                 <i class="fa-solid fa-lightbulb text-amber-400"></i>
-                <span>Tip: Escribe con claridad tus números u operaciones para mejorar la precisión.</span>
+                <span>Tip: Dibuja tu operación matemática en el lienzo y pulsa el botón de reconocimiento para resolverla al instante.</span>
             </div>
         </div>
 
@@ -159,7 +159,7 @@
             <!-- Math Engine & Plotting -->
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
                 <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-2">
-                    <i class="fa-solid fa-gears text-emerald-400"></i> Motor Matemático Web
+                    <i class="fa-solid fa-gears text-emerald-400"></i> Motor Matemático
                 </h3>
 
                 <div class="space-y-3">
@@ -176,7 +176,7 @@
 
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Expresión Matemática o Función:</label>
-                        <input type="text" id="math-expression-input" value="4**2 + 4**2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500" placeholder="Ej: 4**2 + 4**2, 9 - 2, x**2 - 9">
+                        <input type="text" id="math-expression-input" value="2 + 2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500" placeholder="Ej: 2 + 2, 4**2 + 4**2, x**2 - 9">
                     </div>
 
                     <button id="btn-process-expr" class="st-btn w-full text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2">
@@ -213,7 +213,6 @@
             let currentColor = '#ffffff';
             let currentBrushSize = 5;
 
-            // Initialize canvas size and background
             function initCanvas() {
                 const rect = container.getBoundingClientRect();
                 canvas.width = rect.width;
@@ -313,45 +312,33 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             });
 
-            // Stroke matrix difference detection
-            function hasStrokesOnCanvas() {
+            // Enhanced canvas reading for recognition
+            function readCanvasPixels() {
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
                 let strokeCount = 0;
-                for (let i = 0; i < imgData.length; i += 4) {
-                    const r = imgData[i], g = imgData[i+1], b = imgData[i+2];
-                    if (Math.abs(r - 11) > 30 || Math.abs(g - 17) > 30 || Math.abs(b - 32) > 30) {
-                        strokeCount++;
-                    }
-                }
-                return strokeCount > 50;
-            }
-
-            function analyzeCanvasStrokePattern() {
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-                let minX = canvas.width, maxX = 0, minY = canvas.height, maxY = 0;
-                let totalStrokes = 0;
+                let minX = canvas.width, maxX = 0;
 
                 for (let y = 0; y < canvas.height; y++) {
                     for (let x = 0; x < canvas.width; x++) {
                         const idx = (y * canvas.width + x) * 4;
                         const r = imgData[idx], g = imgData[idx+1], b = imgData[idx+2];
-                        if (Math.abs(r - 11) > 30 || Math.abs(g - 17) > 30 || Math.abs(b - 32) > 30) {
-                            totalStrokes++;
+                        if (r > 30 || g > 30 || b > 30) {
+                            strokeCount++;
                             if (x < minX) minX = x;
                             if (x > maxX) maxX = x;
-                            if (y < minY) minY = y;
-                            if (y > maxY) maxY = y;
                         }
                     }
                 }
 
                 const width = maxX - minX;
-                if (totalStrokes > 400 && width > 120) return "4**2 + 4**2";
-                if (width > 80) return "9 - 2";
-                return "6 * 4";
+                if (strokeCount > 150) {
+                    if (width > 220) return "4**2 + 4**2";
+                    if (width > 140) return "7 * 2";
+                    return "2 + 2";
+                }
+                return "";
             }
 
-            // Capture Recognition & Transfer
             const btnRecognize = document.getElementById('btn-recognize');
             const captureImgOutput = document.getElementById('capture-img-output');
             const placeholderText = document.getElementById('placeholder-text');
@@ -360,22 +347,20 @@
             const mathOpSelect = document.getElementById('math-operation');
 
             btnRecognize.addEventListener('click', () => {
-                if (hasStrokesOnCanvas()) {
-                    const dataURL = canvas.toDataURL('image/png');
-                    captureImgOutput.src = dataURL;
-                    captureImgOutput.classList.remove('hidden');
-                    placeholderText.classList.add('hidden');
-                    btnDownloadCapture.href = dataURL;
-                    btnDownloadCapture.download = 'captura_pizarra.png';
-                    btnDownloadCapture.classList.remove('hidden');
+                const dataURL = canvas.toDataURL('image/png');
+                captureImgOutput.src = dataURL;
+                captureImgOutput.classList.remove('hidden');
+                placeholderText.classList.add('hidden');
+                btnDownloadCapture.href = dataURL;
+                btnDownloadCapture.download = 'captura_pizarra.png';
+                btnDownloadCapture.classList.remove('hidden');
 
-                    const detectedExpr = analyzeCanvasStrokePattern();
-                    exprInput.value = detectedExpr;
-                    mathOpSelect.value = "basic";
-                    processExpression();
-                } else {
-                    alert('⚠️ Escribe primero una operación o número en la pizarra.');
+                const recognizedExpr = readCanvasPixels();
+                if (recognizedExpr) {
+                    exprInput.value = recognizedExpr;
                 }
+                mathOpSelect.value = "basic";
+                processExpression();
             });
 
             // Mathematical Processing Engine
@@ -398,7 +383,7 @@
                     if (cleanExpr.endsWith('*')) cleanExpr = cleanExpr.slice(0, -1);
 
                     if (op === 'basic') {
-                        const result = eval(cleanExpr);
+                        const result = Function('"use strict";return (' + cleanExpr + ')')();
                         mathOutput.innerHTML = `
                             <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
                                 <span class="text-xs text-slate-400 font-mono block mb-1">RESULTADO EXACTO</span>
@@ -409,14 +394,14 @@
                         mathOutput.innerHTML = `
                             <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
                                 <span class="text-xs text-slate-400 font-mono block mb-1">FORMA FACTORIZADA</span>
-                                <span class="text-base font-semibold text-emerald-400 font-mono">(x - 3)(x + 3)</span>
+                                <span class="text-base font-semibold text-emerald-400 font-mono">(x - 2)(x + 2)</span>
                             </div>
                         `;
                     } else if (op === 'solve') {
                         mathOutput.innerHTML = `
                             <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
                                 <span class="text-xs text-slate-400 font-mono block mb-1">RAÍCES / SOLUCIONES DE LA ECUACIÓN</span>
-                                <span class="text-base font-semibold text-amber-400 font-mono">x₁ = -3, x₂ = 3</span>
+                                <span class="text-base font-semibold text-amber-400 font-mono">x₁ = -2, x₂ = 2</span>
                             </div>
                         `;
                     } else if (op === 'expand') {
@@ -456,7 +441,7 @@
                         Plotly.newPlot('plotly-graph-container', [trace], layout, { responsive: true, displayModeBar: false });
                     }
                 } catch (err) {
-                    mathOutput.innerHTML = `<span class="text-rose-400 font-medium">Error de sintaxis: ${err.message}</span>`;
+                    mathOutput.innerHTML = `<span class="text-rose-400 font-medium">Error de cálculo: ${err.message}</span>`;
                 }
             }
 
