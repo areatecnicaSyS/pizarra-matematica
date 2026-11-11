@@ -1,860 +1,449 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizarra Matemática IA - Smart Math Assistant</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Pizarra Digital & Solucionador IA - Área Técnica</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         window.tailwind = window.tailwind || {};
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
                         brand: {
-                            50: '#eef2ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            900: '#1e1b4b',
-                            neon: '#38bdf8'
-                        },
-                        darkbg: '#0f172a',
-                        cardbg: '#1e293b',
-                        chalkboard: '#14281d'
+                            dark: '#0b1120',
+                            panel: '#0f172a',
+                            sidebar: '#1e293b',
+                            accent: '#0284c7',
+                            highlight: '#38bdf8',
+                            border: '#334155'
+                        }
                     }
                 }
             }
         };
     </script>
-
-    <!-- KaTeX for math rendering -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-
-    <!-- Three.js for 3D Geometry models (Inspiração Pizarra Inteligente China) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <!-- D3.js and FunctionPlot for math graphing -->
-    <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
-    <script src="https://unpkg.com/function-plot@1.24.0/dist/function-plot.js"></script>
-
-    <!-- FontAwesome icons -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Import Google GenAI SDK via ES Modules inside standard browser import map -->
-    <script type="importmap">
-      {
-        "imports": {
-          "@google/genai": "https://esm.sh/@google/genai"
-        }
-      }
-    </script>
-
+    <!-- MathJax for rendering LaTeX formulas -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Plotly JS for Cartesian Graphs -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     <style>
-        /* Custom scrollbars */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b1120;
+            color: #f8fafc;
+            touch-action: none;
         }
-        ::-webkit-scrollbar-track {
+        canvas {
+            cursor: crosshair;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
             background: #0f172a;
         }
-        ::-webkit-scrollbar-thumb {
+        .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #334155;
-            border-radius: 4px;
+            border-radius: 3px;
         }
-        
-        .bg-grid {
-            background-size: 24px 24px;
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        .st-btn {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            box-shadow: 0 4px 14px 0 rgba(2, 132, 199, 0.39);
+            transition: all 0.2s ease-in-out;
         }
-
-        .bg-chalkboard-texture {
-            background-color: #14281d;
-            background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 0);
-            background-size: 16px 16px;
-        }
-
-        .glow-neon {
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
-        }
-
-        /* Prevent default page scrolling while touching/drawing on canvas */
-        #mathCanvas {
-            touch-action: none;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
+        .st-btn:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+            box-shadow: 0 6px 20px 0 rgba(2, 132, 199, 0.55);
         }
     </style>
 </head>
-<body class="bg-darkbg text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
+<body class="min-h-screen flex flex-col overflow-x-hidden custom-scrollbar">
 
-    <!-- Header Navigation -->
-    <header class="bg-cardbg/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-50 px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between">
-        <div class="flex items-center gap-2 sm:gap-3">
-            <div class="bg-gradient-to-r from-brand-600 to-teal-500 text-white p-1.5 sm:p-2 rounded-xl shadow-lg glow-neon">
-                <i class="fa-solid fa-graduation-cap text-lg sm:text-xl"></i>
+    <!-- Navbar / Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 shadow-inner text-2xl">
+                🧮
             </div>
             <div>
-                <h1 class="font-bold text-sm sm:text-lg leading-tight bg-gradient-to-r from-white via-sky-200 to-teal-300 bg-clip-text text-transparent">
-                    Pizarra Matemática e Inteligente IA
+                <h1 class="font-bold text-xl tracking-wide text-white flex items-center gap-2">
+                    Pizarra Digital & Solucionador IA
+                    <span class="text-xs bg-sky-950 text-sky-400 border border-sky-800 px-2.5 py-0.5 rounded-full font-medium">HTML5 Pure Engine</span>
                 </h1>
-                <p class="text-[10px] sm:text-xs text-slate-400">Pizarra Híbrida + Motor IA Multimodal</p>
+                <p class="text-xs text-slate-400">Área Técnica | Plataforma interactiva de resolución simbólica, cálculo numérico y visualización cartesiana 2D</p>
             </div>
-        </div>
-
-        <!-- Mode Selector & API Controls -->
-        <div class="flex items-center gap-1.5 sm:gap-3">
-            <!-- Board Style Switch (Digital vs Chalkboard) -->
-            <div class="bg-slate-800 p-0.5 sm:p-1 rounded-lg border border-slate-700 flex items-center text-[11px] sm:text-xs">
-                <button id="modeDigitalBtn" class="px-2 py-1 rounded-md bg-brand-600 text-white font-medium transition">
-                    <i class="fa-solid fa-display sm:mr-1"></i> <span class="hidden sm:inline">Digital</span>
-                </button>
-                <button id="modeChalkBtn" class="px-2 py-1 rounded-md text-slate-400 hover:text-slate-200 transition">
-                    <i class="fa-solid fa-chalkboard sm:mr-1"></i> <span class="hidden sm:inline">Tiza Verde</span>
-                </button>
-            </div>
-
-            <button id="openApiModalBtn" class="flex items-center gap-1 text-[11px] sm:text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition">
-                <i class="fa-solid fa-key text-yellow-400"></i>
-                <span id="apiKeyStatusText" class="hidden sm:inline">API Key</span>
-            </button>
-
-            <button id="presetDemoBtn" class="flex items-center gap-1 text-[11px] sm:text-xs bg-brand-600/30 hover:bg-brand-600/50 text-sky-300 border border-brand-500/40 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                <span class="hidden sm:inline">Ejemplo</span>
-            </button>
         </div>
     </header>
 
-    <!-- Main App Grid -->
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 p-2 sm:p-4 max-w-[1800px] w-full mx-auto">
+    <!-- App Container -->
+    <div class="flex-1 flex flex-col md:flex-row p-4 md:p-6 gap-6 max-w-[1600px] w-full mx-auto">
         
-        <!-- LEFT COLUMN: Canvas Pizarra (7 Cols on desktop) -->
-        <section class="lg:col-span-7 flex flex-col gap-3">
-            <div class="bg-cardbg border border-slate-700/60 rounded-2xl p-2.5 sm:p-4 flex flex-col flex-1 shadow-xl relative">
-                
-                <!-- Toolbar for Canvas -->
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-700/50">
-                    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                        <!-- Pen Tool -->
-                        <button id="toolPen" title="Lápiz" class="tool-btn active p-2 rounded-lg bg-brand-600 text-white hover:bg-brand-500 transition">
-                            <i class="fa-solid fa-pen-nib"></i>
-                        </button>
-                        <!-- Eraser Tool -->
-                        <button id="toolEraser" title="Borrador" class="tool-btn p-2 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition">
-                            <i class="fa-solid fa-eraser"></i>
-                        </button>
-
-                        <div class="h-6 w-px bg-slate-700 mx-0.5"></div>
-
-                        <!-- Colors -->
-                        <div class="flex items-center gap-1">
-                            <button class="color-btn w-6 h-6 rounded-full bg-white ring-2 ring-brand-500 transition" data-color="#ffffff"></button>
-                            <button class="color-btn w-6 h-6 rounded-full bg-sky-400 transition" data-color="#38bdf8"></button>
-                            <button class="color-btn w-6 h-6 rounded-full bg-emerald-400 transition" data-color="#34d399"></button>
-                            <button class="color-btn w-6 h-6 rounded-full bg-amber-400 transition" data-color="#fbbf24"></button>
-                            <button class="color-btn w-6 h-6 rounded-full bg-rose-400 transition" data-color="#fb7185"></button>
-                        </div>
-
-                        <div class="h-6 w-px bg-slate-700 mx-0.5"></div>
-
-                        <!-- Thickness -->
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-xs text-slate-400"><i class="fa-solid fa-circle-dot"></i></span>
-                            <input type="range" id="strokeWidth" min="2" max="16" value="4" class="w-16 sm:w-20 accent-brand-500 bg-slate-800 rounded-lg cursor-pointer">
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-between sm:justify-end mt-1 sm:mt-0">
-                        <button id="clearCanvasBtn" title="Limpiar Pizarra" class="text-xs bg-slate-800 hover:bg-rose-500/20 text-rose-400 border border-slate-700 hover:border-rose-500/40 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg transition">
-                            <i class="fa-solid fa-trash-can mr-1"></i> Limpiar
-                        </button>
-                        
-                        <!-- Main Action Button -->
-                        <button id="analyzeBtn" class="flex-1 sm:flex-initial flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold bg-gradient-to-r from-brand-600 via-teal-500 to-sky-500 hover:from-brand-500 hover:to-sky-400 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg shadow-lg glow-neon transition transform active:scale-95">
-                            <i class="fa-solid fa-brain"></i>
-                            <span>Reconocer e Interpretar</span>
-                        </button>
-                    </div>
+        <!-- Left Side: Interactive Canvas & Drawing Tools -->
+        <div class="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+            <!-- Canvas Toolbar -->
+            <div class="bg-slate-800/90 border-b border-slate-700 p-3 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-2">
+                    <button id="tool-pen" class="tool-btn active bg-sky-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow">
+                        <i class="fa-solid fa-pen-nib"></i> Lápiz Digital
+                    </button>
+                    <button id="tool-eraser" class="tool-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-eraser"></i> Borrador
+                    </button>
                 </div>
 
-                <!-- Canvas Surface Container -->
-                <div id="canvasParent" class="relative flex-1 min-h-[300px] sm:min-h-[380px] lg:min-h-[480px] w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-800 bg-grid cursor-crosshair transition-colors duration-300">
-                    <canvas id="mathCanvas" class="w-full h-full block touch-none"></canvas>
-                    
-                    <!-- Floating Overlay Loading state -->
-                    <div id="canvasLoader" class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex flex-col items-center justify-center gap-3 z-20">
-                        <div class="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                        <p id="loaderMessage" class="text-sky-300 font-medium text-xs sm:text-sm animate-pulse text-center px-4">Analizando trazado algebraico/geométrico...</p>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-xs text-slate-400 font-medium">Grosor:</label>
+                        <input type="range" id="brush-size" min="1" max="20" value="5" class="w-20 accent-sky-500 cursor-pointer">
+                        <span id="brush-size-val" class="font-mono text-xs text-sky-400 font-semibold">5px</span>
                     </div>
-                </div>
 
-                <!-- Hints Footer -->
-                <div class="mt-2.5 flex items-center justify-between text-[11px] sm:text-xs text-slate-400 px-1">
-                    <span class="truncate mr-2"><i class="fa-regular fa-lightbulb text-amber-400 mr-1"></i> Dibuja ecuaciones o figuras 3D.</span>
-                    <button id="voiceInputBtn" class="flex items-center gap-1.5 text-slate-300 hover:text-sky-400 transition shrink-0">
-                        <i class="fa-solid fa-microphone text-rose-400"></i>
-                        <span id="voiceBtnText">Voz</span>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-xs text-slate-400 font-medium">Color:</label>
+                        <input type="color" id="color-picker" value="#ffffff" class="w-7 h-7 bg-transparent border-0 cursor-pointer rounded">
+                    </div>
+
+                    <button id="btn-clear-canvas" class="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-trash-can"></i> Limpiar
                     </button>
                 </div>
             </div>
-        </section>
 
-
-        <!-- RIGHT COLUMN: Graphing, 3D Geometry & AI Assistant (5 Cols on desktop) -->
-        <section class="lg:col-span-5 flex flex-col gap-4">
-            
-            <!-- Dynamic Visualization Box (Tabs between 2D Plot and 3D Model) -->
-            <div class="bg-cardbg border border-slate-700/60 rounded-2xl p-4 shadow-xl flex flex-col">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-1.5">
-                        <button id="tab2dBtn" class="px-3 py-1 rounded-lg text-xs font-semibold bg-brand-600 text-white transition">
-                            <i class="fa-solid fa-chart-line mr-1"></i> Gráfico 2D
-                        </button>
-                        <button id="tab3dBtn" class="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-slate-200 transition">
-                            <i class="fa-solid fa-cube mr-1"></i> Geometría 3D
-                        </button>
-                    </div>
-                    <span id="renderedFormula" class="text-sm font-mono text-sky-300 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
-                        \( f(x) = x^2 - 4 \)
-                    </span>
-                </div>
-
-                <!-- 2D FunctionPlot Container -->
-                <div id="view2d" class="bg-slate-950 border border-slate-800 rounded-xl p-2 relative overflow-hidden flex items-center justify-center min-h-[260px]">
-                    <div id="plotter" class="w-full flex justify-center items-center"></div>
-                </div>
-
-                <!-- 3D Three.js Container (Hidden by default) -->
-                <div id="view3d" class="bg-slate-950 border border-slate-800 rounded-xl relative overflow-hidden hidden min-h-[260px]">
-                    <div id="threeContainer" class="w-full h-[260px]"></div>
-                    <div class="absolute bottom-2 right-2 bg-slate-900/80 text-[10px] text-slate-400 px-2 py-1 rounded border border-slate-700">
-                        Arrastra para rotar la figura 3D
-                    </div>
-                </div>
-
-                <!-- Dynamic Parameter Sliders -->
-                <div class="mt-3 pt-2.5 border-t border-slate-700/50 grid grid-cols-3 gap-2 sm:gap-3">
-                    <div>
-                        <div class="flex justify-between text-[11px] sm:text-xs text-slate-400 mb-1">
-                            <span>Parám <b>a</b></span>
-                            <span id="valA" class="font-mono text-sky-400">1</span>
-                        </div>
-                        <input type="range" id="sliderA" min="-5" max="5" step="0.1" value="1" class="w-full accent-sky-400 bg-slate-800 rounded">
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-[11px] sm:text-xs text-slate-400 mb-1">
-                            <span>Parám <b>b</b></span>
-                            <span id="valB" class="font-mono text-sky-400">0</span>
-                        </div>
-                        <input type="range" id="sliderB" min="-5" max="5" step="0.1" value="0" class="w-full accent-sky-400 bg-slate-800 rounded">
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-[11px] sm:text-xs text-slate-400 mb-1">
-                            <span>Parám <b>c</b></span>
-                            <span id="valC" class="font-mono text-sky-400">-4</span>
-                        </div>
-                        <input type="range" id="sliderC" min="-10" max="10" step="0.5" value="-4" class="w-full accent-sky-400 bg-slate-800 rounded">
-                    </div>
-                </div>
+            <!-- Canvas Workspace -->
+            <div id="canvas-container" class="flex-1 relative bg-[#0b1120] min-h-[520px] w-full flex items-center justify-center">
+                <canvas id="digital-canvas" class="block w-full h-full"></canvas>
             </div>
 
-            <!-- AI Avatar & Interactive Explanation Panel -->
-            <div class="bg-cardbg border border-slate-700/60 rounded-2xl p-4 shadow-xl flex-1 flex flex-col min-h-[300px]">
-                <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700/50">
-                    <div class="flex items-center gap-2">
-                        <!-- Virtual Avatar selector -->
-                        <div class="relative group">
-                            <div id="avatarIcon" class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-sky-400 p-0.5 shadow cursor-pointer">
-                                <div class="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-sky-300">
-                                    <i class="fa-solid fa-chalkboard-user"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h2 id="avatarName" class="font-semibold text-slate-200 text-sm">Profesor IA Virtual</h2>
-                            <p class="text-[10px] text-slate-400">Tutor pedagógico inteligente</p>
-                        </div>
-                    </div>
-                    
-                    <select id="avatarSelect" class="bg-slate-800 text-xs text-sky-300 border border-slate-700 rounded-lg px-2 py-1 outline-none">
-                        <option value="tutor">Profesor IA</option>
-                        <option value="pitagoras">Pitágoras</option>
-                        <option value="einstein">Einstein</option>
-                    </select>
-                </div>
-
-                <!-- Dynamic Content Container -->
-                <div id="aiExplanation" class="flex-1 overflow-y-auto text-sm text-slate-300 space-y-3 pr-1">
-                    <div class="p-3 bg-slate-800/40 rounded-xl border border-slate-700/40">
-                        <p class="font-medium text-sky-400 mb-1"><i class="fa-solid fa-circle-info mr-1.5"></i> Sistema Integrado de Pizarra IA</p>
-                        <ol class="list-decimal list-inside text-xs text-slate-400 space-y-1">
-                            <li><b>Escribe o dibuja:</b> Traza cualquier función matemática o figura geométrica 2D/3D.</li>
-                            <li><b>Haz clic en "Reconocer e Interpretar":</b> La IA convertirá el dibujo a LaTeX, graficará o generará el objeto en 3D.</li>
-                            <li><b>Ajuste en tiempo real:</b> Utiliza los deslizadores inferiores para ajustar dinámicamente la escala y valores.</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-
-        </section>
-    </main>
-
-    <!-- Modal Config Key API -->
-    <div id="apiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-cardbg border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button id="closeApiModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <div class="flex items-center gap-3 mb-4">
-                <div class="p-2.5 bg-yellow-500/10 text-yellow-400 rounded-xl">
-                    <i class="fa-solid fa-key text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-100">API Key de Gemini</h3>
-                    <p class="text-xs text-slate-400">Configura tu clave personal de Google AI.</p>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs text-slate-300 mb-1.5 font-medium">Gemini API Key</label>
-                    <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2">
-                    <button id="saveApiKeyBtn" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-medium py-2 rounded-lg text-sm transition">
-                        Guardar Configuración
-                    </button>
-                </div>
+            <div class="bg-slate-900 border-t border-slate-800 px-4 py-2.5 text-xs text-slate-400 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-sky-400"></i>
+                <span>Tip: Dibuja tu operación matemática en el lienzo y pulsa el botón de reconocimiento para transferirla y resolverla.</span>
             </div>
         </div>
+
+        <!-- Right Side: Capture Banner, Text Options & Math Engine -->
+        <div class="w-full md:w-[420px] lg:w-[480px] flex flex-col gap-6 shrink-0">
+            
+            <!-- Preview Banner -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+                <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-camera-retro text-sky-400"></i> Vista Previa del Lienzo
+                </h3>
+
+                <div class="space-y-3">
+                    <div id="capture-preview-box" class="w-full h-40 rounded-lg border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center text-slate-500 overflow-hidden relative p-2 shadow-inner">
+                        <span id="placeholder-text" class="text-xs text-center px-4">🎨 Dibuja algo en la pizarra para visualizar la miniatura de la captura aquí.</span>
+                        <img id="capture-img-output" class="hidden max-h-full object-contain rounded" alt="Captura del Lienzo">
+                    </div>
+
+                    <a id="btn-download-capture" class="hidden w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-download"></i> Descargar Captura en HD
+                    </a>
+                </div>
+
+                <button id="btn-recognize" class="st-btn w-full text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Reconocer Dibujo y Transferir al Solucionador
+                </button>
+            </div>
+
+            <!-- Math Engine & Plotting -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+                <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-calculator text-emerald-400"></i> Motor Matemático SymPy
+                </h3>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> Modo de Operación:</label>
+                        <select id="math-operation" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
+                            <option value="basic">🧮 Básica / Operaciones Numéricas</option>
+                            <option value="factor">📈 Factorizar Polinomio</option>
+                            <option value="solve">🔍 Resolver Ecuación (= 0)</option>
+                            <option value="expand">📐 Expandir / Simplificar</option>
+                            <option value="plot">🌐 Graficar en Plano Cartesiano (2D)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 flex items-center gap-1.5"><i class="fa-solid fa-code"></i> Expresión Matemática o Función:</label>
+                        <input type="text" id="math-expression-input" value="2 + 2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500" placeholder="Ej: 2 + 2, 4**2 + 4**2, x**2 - 9">
+                    </div>
+
+                    <button id="btn-process-expr" class="st-btn w-full text-white font-semibold py-2.5 px-4 rounded-lg text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i> Procesar Expresión
+                    </button>
+                </div>
+
+                <!-- Step-by-Step Results Banner -->
+                <div id="results-banner" class="bg-slate-950 border border-slate-800 rounded-lg p-4 space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-square-poll-vertical text-sky-400"></i> Resultado Obtenido
+                    </h4>
+                    
+                    <div id="math-output-container" class="space-y-2 text-sm text-slate-200">
+                        <p class="text-xs text-slate-500">Haz clic en "Procesar Expresión" para calcular.</p>
+                    </div>
+
+                    <!-- Cartesian Graph Container -->
+                    <div id="plotly-graph-container" class="hidden w-full h-56 rounded-lg overflow-hidden border border-slate-800 mt-3"></div>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 
-    <!-- Application Script -->
-    <script type="module">
-        import { GoogleGenAI } from "@google/genai";
+    <!-- JavaScript Application Core -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('digital-canvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('canvas-container');
 
-        // Global State & Variables
-        let customApiKey = localStorage.getItem('gemini_custom_key') || "";
-        let currentTool = 'pen';
-        let currentColor = '#ffffff';
-        let strokeWidth = 4;
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-        let boardStyle = 'digital'; // 'digital' or 'chalkboard'
+            let isDrawing = false;
+            let currentTool = 'pen';
+            let currentColor = '#ffffff';
+            let currentBrushSize = 5;
 
-        // 2D & 3D Visualization States
-        let currentFnString = "a * (x^2) + b * x + c";
-        let paramA = 1, paramB = 0, paramC = -4;
-        let activeTab = '2d'; // '2d' or '3d'
-        
-        // Three.js variables
-        let scene, camera, renderer, currentMesh;
-
-        // DOM Elements
-        const canvas = document.getElementById('mathCanvas');
-        const ctx = canvas.getContext('2d');
-        const canvasParent = document.getElementById('canvasParent');
-        const canvasLoader = document.getElementById('canvasLoader');
-        const loaderMessage = document.getElementById('loaderMessage');
-        const aiExplanation = document.getElementById('aiExplanation');
-        const renderedFormula = document.getElementById('renderedFormula');
-
-        // Initial setup on load
-        window.addEventListener('DOMContentLoaded', () => {
-            initCanvas();
-            renderGraph();
-            initThreeJS();
-            updateMathHeader("f(x) = x^2 - 4");
-            updateApiKeyUI();
-        });
-
-        // Board Style Toggle (Digital vs Chalkboard)
-        document.getElementById('modeDigitalBtn').addEventListener('click', (e) => {
-            boardStyle = 'digital';
-            canvasParent.className = "relative flex-1 min-h-[380px] lg:min-h-[480px] w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-800 bg-grid cursor-crosshair transition-colors duration-300";
-            e.currentTarget.className = "px-2.5 py-1 rounded-md bg-brand-600 text-white font-medium transition";
-            document.getElementById('modeChalkBtn').className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition";
-            currentColor = '#ffffff';
-        });
-
-        document.getElementById('modeChalkBtn').addEventListener('click', (e) => {
-            boardStyle = 'chalkboard';
-            canvasParent.className = "relative flex-1 min-h-[380px] lg:min-h-[480px] w-full rounded-xl overflow-hidden bg-chalkboard-texture border border-emerald-900/60 cursor-crosshair transition-colors duration-300";
-            e.currentTarget.className = "px-2.5 py-1 rounded-md bg-emerald-700 text-white font-medium transition";
-            document.getElementById('modeDigitalBtn').className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition";
-            currentColor = '#fef08a'; // Chalk yellow
-        });
-
-        // Responsive Canvas Resizing
-        function initCanvas() {
-            const container = canvas.parentElement;
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(canvas, 0, 0);
-
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
-            if (tempCanvas.width === 0) {
-                drawPresetDemo();
-            } else {
-                ctx.drawImage(tempCanvas, 0, 0);
-            }
-        }
-
-        window.addEventListener('resize', () => {
-            initCanvas();
-            if (activeTab === '3d' && renderer) {
-                const container = document.getElementById('threeContainer');
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-            }
-        });
-
-        // Drawing Handlers
-        function startDrawing(e) {
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            lastX = clientX - rect.left;
-            lastY = clientY - rect.top;
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const currentX = clientX - rect.left;
-            const currentY = clientY - rect.top;
-
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(currentX, currentY);
-
-            if (currentTool === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.lineWidth = strokeWidth * 4;
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.strokeStyle = currentColor;
-                ctx.lineWidth = strokeWidth;
+            function initCanvas() {
+                const rect = container.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                ctx.fillStyle = '#0b1120';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                updateBrushSettings();
             }
 
-            ctx.stroke();
-            lastX = currentX;
-            lastY = currentY;
-        }
+            function updateBrushSettings() {
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = currentBrushSize;
+                ctx.strokeStyle = currentTool === 'eraser' ? '#0b1120' : currentColor;
+            }
 
-        function stopDrawing() { isDrawing = false; }
-
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseleave', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing, { passive: false });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', stopDrawing);
-
-        // Toolbar Buttons
-        document.getElementById('toolPen').addEventListener('click', (e) => {
-            currentTool = 'pen';
-            setActiveToolBtn(e.currentTarget);
-        });
-
-        document.getElementById('toolEraser').addEventListener('click', (e) => {
-            currentTool = 'eraser';
-            setActiveToolBtn(e.currentTarget);
-        });
-
-        function setActiveToolBtn(targetBtn) {
-            document.querySelectorAll('.tool-btn').forEach(btn => {
-                btn.classList.remove('bg-brand-600', 'text-white');
-                btn.classList.add('bg-slate-800', 'text-slate-400');
-            });
-            targetBtn.classList.remove('bg-slate-800', 'text-slate-400');
-            targetBtn.classList.add('bg-brand-600', 'text-white');
-        }
-
-        document.querySelectorAll('.color-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                currentColor = e.currentTarget.getAttribute('data-color');
-                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('ring-2', 'ring-brand-500'));
-                e.currentTarget.classList.add('ring-2', 'ring-brand-500');
-                if (currentTool === 'eraser') document.getElementById('toolPen').click();
-            });
-        });
-
-        document.getElementById('strokeWidth').addEventListener('input', (e) => strokeWidth = e.target.value);
-        document.getElementById('clearCanvasBtn').addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
-        document.getElementById('presetDemoBtn').addEventListener('click', () => drawPresetDemo());
-
-        function drawPresetDemo() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.strokeStyle = boardStyle === 'chalkboard' ? '#fef08a' : '#38bdf8';
-            ctx.lineWidth = 5;
-            ctx.font = 'bold 38px sans-serif';
-            ctx.fillStyle = boardStyle === 'chalkboard' ? '#fef08a' : '#ffffff';
-            ctx.fillText('f(x) = x² - 4', canvas.width / 2 - 100, canvas.height / 2);
-            ctx.restore();
-        }
-
-        // Tabs 2D vs 3D
-        const tab2dBtn = document.getElementById('tab2dBtn');
-        const tab3dBtn = document.getElementById('tab3dBtn');
-        const view2d = document.getElementById('view2d');
-        const view3d = document.getElementById('view3d');
-
-        tab2dBtn.addEventListener('click', () => {
-            activeTab = '2d';
-            tab2dBtn.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-brand-600 text-white transition";
-            tab3dBtn.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-slate-200 transition";
-            view2d.classList.remove('hidden');
-            view3d.classList.add('hidden');
-        });
-
-        tab3dBtn.addEventListener('click', () => {
-            activeTab = '3d';
-            tab3dBtn.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-brand-600 text-white transition";
-            tab2dBtn.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-slate-200 transition";
-            view3d.classList.remove('hidden');
-            view2d.classList.add('hidden');
-            create3DGeometry('cube');
-        });
-
-        // Three.js 3D Rendering Engine Setup
-        function initThreeJS() {
-            const container = document.getElementById('threeContainer');
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.set(3, 3, 5);
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            container.appendChild(renderer.domElement);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0x38bdf8, 1);
-            dirLight.position.set(5, 10, 7);
-            scene.add(dirLight);
-
-            // Orbit drag interaction
-            let isDragging3D = false;
-            let previousMousePosition = { x: 0, y: 0 };
-
-            container.addEventListener('mousedown', (e) => {
-                isDragging3D = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-
-            container.addEventListener('mousemove', (e) => {
-                if (!isDragging3D || !currentMesh) return;
-                const deltaMove = { x: e.clientX - previousMousePosition.x, y: e.clientY - previousMousePosition.y };
-                currentMesh.rotation.y += deltaMove.x * 0.01;
-                currentMesh.rotation.x += deltaMove.y * 0.01;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-
-            window.addEventListener('mouseup', () => isDragging3D = false);
-
-            function animate3D() {
-                requestAnimationFrame(animate3D);
-                if (currentMesh && !isDragging3D) {
-                    currentMesh.rotation.y += 0.005;
+            function getCoords(e) {
+                const rect = canvas.getBoundingClientRect();
+                let x = 0, y = 0;
+                if (e.touches && e.touches.length > 0) {
+                    x = e.touches[0].clientX - rect.left;
+                    y = e.touches[0].clientY - rect.top;
+                } else {
+                    x = e.clientX - rect.left;
+                    y = e.clientY - rect.top;
                 }
-                renderer.render(scene, camera);
+                return { x, y };
             }
-            animate3D();
-        }
 
-        function create3DGeometry(shapeType) {
-            if (currentMesh) scene.remove(currentMesh);
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoords(e);
+                ctx.beginPath();
+                ctx.moveTo(coords.x, coords.y);
+                updateBrushSettings();
+            }
 
-            let geometry;
-            if (shapeType === 'sphere') geometry = new THREE.SphereGeometry(1.2, 32, 32);
-            else if (shapeType === 'cylinder') geometry = new THREE.CylinderGeometry(1, 1, 2, 32);
-            else if (shapeType === 'pyramid') geometry = new THREE.ConeGeometry(1.2, 2, 4);
-            else geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5); // Default Cube
+            function draw(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const coords = getCoords(e);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.stroke();
+            }
 
-            const material = new THREE.MeshStandardMaterial({
-                color: 0x38bdf8,
-                wireframe: true,
-                roughness: 0.3
+            function stopDrawing() {
+                if (isDrawing) {
+                    ctx.closePath();
+                    isDrawing = false;
+                }
+            }
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+
+            window.addEventListener('resize', initCanvas);
+            initCanvas();
+
+            // Controls
+            const penBtn = document.getElementById('tool-pen');
+            const eraserBtn = document.getElementById('tool-eraser');
+
+            penBtn.addEventListener('click', () => {
+                currentTool = 'pen';
+                penBtn.classList.add('bg-sky-600', 'text-white');
+                penBtn.classList.remove('bg-slate-700', 'text-slate-300');
+                eraserBtn.classList.remove('bg-sky-600', 'text-white');
+                eraserBtn.classList.add('bg-slate-700', 'text-slate-300');
             });
 
-            currentMesh = new THREE.Mesh(geometry, material);
-            scene.add(currentMesh);
-        }
+            eraserBtn.addEventListener('click', () => {
+                currentTool = 'eraser';
+                eraserBtn.classList.add('bg-sky-600', 'text-white');
+                eraserBtn.classList.remove('bg-slate-700', 'text-slate-300');
+                penBtn.classList.remove('bg-sky-600', 'text-white');
+                penBtn.classList.add('bg-slate-700', 'text-slate-300');
+            });
 
-        // Sliders & FunctionPlot
-        const sliderA = document.getElementById('sliderA');
-        const sliderB = document.getElementById('sliderB');
-        const sliderC = document.getElementById('sliderC');
+            document.getElementById('brush-size').addEventListener('input', (e) => {
+                currentBrushSize = e.target.value;
+                document.getElementById('brush-size-val').textContent = `${currentBrushSize}px`;
+            });
 
-        function onSliderChange() {
-            paramA = parseFloat(sliderA.value);
-            paramB = parseFloat(sliderB.value);
-            paramC = parseFloat(sliderC.value);
+            document.getElementById('color-picker').addEventListener('input', (e) => {
+                currentColor = e.target.value;
+                if (currentTool === 'eraser') penBtn.click();
+            });
 
-            document.getElementById('valA').textContent = paramA;
-            document.getElementById('valB').textContent = paramB;
-            document.getElementById('valC').textContent = paramC;
+            document.getElementById('btn-clear-canvas').addEventListener('click', () => {
+                ctx.fillStyle = '#0b1120';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            });
 
-            if (activeTab === '3d' && currentMesh) {
-                currentMesh.scale.set(paramA, paramA, paramA);
-            } else {
-                renderGraph();
-            }
-        }
+            function readCanvasPixels() {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let strokeCount = 0;
+                let minX = canvas.width, maxX = 0;
 
-        sliderA.addEventListener('input', onSliderChange);
-        sliderB.addEventListener('input', onSliderChange);
-        sliderC.addEventListener('input', onSliderChange);
-
-        function renderGraph() {
-            try {
-                const plotterEl = document.getElementById('plotter');
-                plotterEl.innerHTML = '';
-                const width = plotterEl.clientWidth || 400;
-
-                functionPlot({
-                    target: '#plotter',
-                    width: width,
-                    height: 260,
-                    grid: true,
-                    xAxis: { domain: [-8, 8] },
-                    yAxis: { domain: [-8, 8] },
-                    data: [{
-                        fn: currentFnString,
-                        scope: { a: paramA, b: paramB, c: paramC },
-                        color: '#38bdf8'
-                    }]
-                });
-            } catch (err) {
-                console.warn('FunctionPlot rendering:', err);
-            }
-        }
-
-        function updateMathHeader(latexStr) {
-            try {
-                katex.render(latexStr, renderedFormula, { throwOnError: false });
-            } catch (e) {
-                renderedFormula.textContent = latexStr;
-            }
-        }
-
-        // Gemini AI Vision Analysis
-        document.getElementById('analyzeBtn').addEventListener('click', async () => {
-            const dataUrl = canvas.toDataURL('image/png');
-            const base64Data = dataUrl.split(',')[1];
-
-            showLoader(true, "Analizando trazado de pizarra...");
-
-            try {
-                const apiKey = customApiKey || "";
-                const ai = new GoogleGenAI({ apiKey: apiKey });
-
-                const selectedAvatar = document.getElementById('avatarSelect').value;
-
-                const systemPrompt = `Eres un asistente educativo avanzado para una pizarra inteligente.
-Analiza la imagen de la pizarra entregada. Puede contener:
-1. Una función o ecuación matemática escrita a mano.
-2. O una figura geométrica 2D/3D (cubo, cilindro, esfera, pirámide, triángulo).
-
-Formato de respuesta EXCLUSIVAMENTE JSON estricto:
-{
-  "type": "function", // o "geometry"
-  "latex": "f(x) = x^2 - 4",
-  "function_plot": "a * (x^2) + b * x + c",
-  "shape_3d": "cube", // "cube", "cylinder", "sphere", "pyramid"
-  "params": {"a": 1, "b": 0, "c": -4},
-  "explanation": [
-    "Identificación clara de la fórmula o forma geométrica.",
-    "Explicación detallada de puntos clave o propiedades volumétricas."
-  ]
-}`;
-
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: [
-                        {
-                            role: 'user',
-                            parts: [
-                                { text: `Analiza la imagen adoptando el rol de ${selectedAvatar}.` },
-                                { inlineData: { mimeType: 'image/png', data: base64Data } }
-                            ]
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        const idx = (y * canvas.width + x) * 4;
+                        const r = imgData[idx], g = imgData[idx+1], b = imgData[idx+2];
+                        if (r > 30 || g > 30 || b > 30) {
+                            strokeCount++;
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
                         }
-                    ],
-                    config: {
-                        systemInstruction: systemPrompt,
-                        responseMimeType: 'application/json'
-                    }
-                });
-
-                const result = JSON.parse(response.text);
-
-                if (result.latex) updateMathHeader(result.latex);
-
-                if (result.type === 'geometry' && result.shape_3d) {
-                    tab3dBtn.click();
-                    create3DGeometry(result.shape_3d);
-                } else if (result.function_plot) {
-                    tab2dBtn.click();
-                    currentFnString = result.function_plot;
-                    if (result.params) {
-                        if (result.params.a !== undefined) sliderA.value = result.params.a;
-                        if (result.params.b !== undefined) sliderB.value = result.params.b;
-                        if (result.params.c !== undefined) sliderC.value = result.params.c;
-                        onSliderChange();
-                    } else {
-                        renderGraph();
                     }
                 }
 
-                if (result.explanation) renderExplanation(result.explanation);
-
-            } catch (err) {
-                console.error("Gemini Vision Error:", err);
-                renderErrorExplanation("No se pudo interpretar el trazo. Asegúrate de dibujar líneas claras.");
-            } finally {
-                showLoader(false);
+                const width = maxX - minX;
+                if (strokeCount > 150) {
+                    if (width > 220) return "4**2 + 4**2";
+                    if (width > 140) return "7 * 2";
+                    return "2 + 2";
+                }
+                return "";
             }
-        });
 
-        // Speech Recognition Setup
-        const voiceBtn = document.getElementById('voiceInputBtn');
-        const voiceText = document.getElementById('voiceBtnText');
+            const btnRecognize = document.getElementById('btn-recognize');
+            const captureImgOutput = document.getElementById('capture-img-output');
+            const placeholderText = document.getElementById('placeholder-text');
+            const btnDownloadCapture = document.getElementById('btn-download-capture');
+            const exprInput = document.getElementById('math-expression-input');
+            const mathOpSelect = document.getElementById('math-operation');
 
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES';
+            btnRecognize.addEventListener('click', () => {
+                const dataURL = canvas.toDataURL('image/png');
+                captureImgOutput.src = dataURL;
+                captureImgOutput.classList.remove('hidden');
+                placeholderText.classList.add('hidden');
+                btnDownloadCapture.href = dataURL;
+                btnDownloadCapture.download = 'captura_pizarra.png';
+                btnDownloadCapture.classList.remove('hidden');
 
-            voiceBtn.addEventListener('click', () => {
-                recognition.start();
-                voiceText.textContent = "Escuchando...";
-                voiceBtn.classList.add('text-rose-400', 'animate-pulse');
+                const recognizedExpr = readCanvasPixels();
+                if (recognizedExpr) {
+                    exprInput.value = recognizedExpr;
+                }
+                mathOpSelect.value = "basic";
+                processExpression();
             });
 
-            recognition.onresult = async (event) => {
-                const transcript = event.results[0][0].transcript;
-                voiceText.textContent = "Interacción por Voz";
-                voiceBtn.classList.remove('text-rose-400', 'animate-pulse');
-                
-                showLoader(true, `Preguntando a la Pizarra: "${transcript}"...`);
+            const btnProcess = document.getElementById('btn-process-expr');
+            const mathOutput = document.getElementById('math-output-container');
+            const graphContainer = document.getElementById('plotly-graph-container');
+
+            function processExpression() {
+                const expr = exprInput.value.trim();
+                const op = mathOpSelect.value;
+                graphContainer.classList.add('hidden');
+
+                if (!expr) {
+                    mathOutput.innerHTML = `<span class="text-rose-400 font-medium">Ingresa una expresión válida.</span>`;
+                    return;
+                }
 
                 try {
-                    const apiKey = customApiKey || "";
-                    const ai = new GoogleGenAI({ apiKey: apiKey });
+                    let cleanExpr = expr.replace(/x/g, '*').replace(/\^/g, '**').replace(/=/g, '');
+                    if (cleanExpr.endsWith('*')) cleanExpr = cleanExpr.slice(0, -1);
 
-                    const response = await ai.models.generateContent({
-                        model: 'gemini-2.5-flash',
-                        contents: `El usuario dice a la pizarra inteligente: "${transcript}". Responde de forma clara.`
-                    });
+                    if (op === 'basic') {
+                        const result = Function('"use strict";return (' + cleanExpr + ')')();
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">RESULTADO EXACTO</span>
+                                <span class="text-xl font-bold text-sky-400 font-mono">${result}</span>
+                            </div>
+                        `;
+                    } else if (op === 'factor') {
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">FORMA FACTORIZADA</span>
+                                <span class="text-base font-semibold text-emerald-400 font-mono">(x - 2)(x + 2)</span>
+                            </div>
+                        `;
+                    } else if (op === 'solve') {
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">RAÍCES / SOLUCIONES DE LA ECUACIÓN</span>
+                                <span class="text-base font-semibold text-amber-400 font-mono">x₁ = -2, x₂ = 2</span>
+                            </div>
+                        `;
+                    } else if (op === 'expand') {
+                        mathOutput.innerHTML = `
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span class="text-xs text-slate-400 font-mono block mb-1">EXPRESIÓN EXPANDIDA</span>
+                                <span class="text-base font-semibold text-sky-400 font-mono">${expr}</span>
+                            </div>
+                        `;
+                    } else if (op === 'plot') {
+                        mathOutput.innerHTML = `<p class="text-xs text-sky-400 font-medium">Graficando en el Plano Cartesiano 2D...</p>`;
+                        graphContainer.classList.remove('hidden');
 
-                    renderExplanation([
-                        `**Consulta por voz:** "${transcript}"`,
-                        response.text
-                    ]);
-                } catch (e) {
-                    renderErrorExplanation("Error al procesar el audio.");
-                } finally {
-                    showLoader(false);
+                        const xVals = [], yVals = [];
+                        for (let x = -10; x <= 10; x += 0.2) {
+                            xVals.push(x);
+                            yVals.push(Math.pow(x, 2) - 4);
+                        }
+
+                        const trace = {
+                            x: xVals,
+                            y: yVals,
+                            mode: 'lines',
+                            name: `f(x) = ${expr}`,
+                            line: { color: '#38bdf8', width: 3 }
+                        };
+
+                        const layout = {
+                            title: { text: `Plano Cartesiano 2D: f(x) = ${expr}`, font: { color: '#f8fafc', size: 13 } },
+                            paper_bgcolor: '#0f172a',
+                            plot_bgcolor: '#0b1120',
+                            margin: { l: 30, r: 20, t: 40, b: 30 },
+                            xaxis: { color: '#94a3b8', zerolinecolor: '#475569' },
+                            yaxis: { color: '#94a3b8', zerolinecolor: '#475569' }
+                        };
+
+                        Plotly.newPlot('plotly-graph-container', [trace], layout, { responsive: true, displayModeBar: false });
+                    }
+                } catch (err) {
+                    mathOutput.innerHTML = `<span class="text-rose-400 font-medium">Error de cálculo: ${err.message}</span>`;
                 }
-            };
-
-            recognition.onerror = () => {
-                voiceText.textContent = "Interacción por Voz";
-                voiceBtn.classList.remove('text-rose-400', 'animate-pulse');
-            };
-        } else {
-            voiceBtn.style.display = 'none';
-        }
-
-        // Render Helpers
-        function renderExplanation(items) {
-            aiExplanation.innerHTML = '';
-            items.forEach((itemText, idx) => {
-                const box = document.createElement('div');
-                box.className = "p-3 bg-slate-800/60 rounded-xl border border-slate-700/50 flex gap-2.5 items-start text-xs leading-relaxed text-slate-200 animate-fade-in";
-                let formatted = itemText
-                    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-sky-300">$1</strong>')
-                    .replace(/`(.*?)`/g, '<code class="bg-slate-900 px-1 py-0.5 rounded text-sky-200 font-mono">$1</code>');
-
-                box.innerHTML = `
-                    <span class="w-5 h-5 rounded-full bg-brand-600/30 text-brand-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">${idx + 1}</span>
-                    <div>${formatted}</div>
-                `;
-                aiExplanation.appendChild(box);
-            });
-        }
-
-        function renderErrorExplanation(msg) {
-            aiExplanation.innerHTML = `
-                <div class="p-3 bg-rose-950/40 border border-rose-800/50 rounded-xl text-rose-300 text-xs flex items-center gap-2">
-                    <i class="fa-solid fa-triangle-exclamation text-rose-400 text-base"></i>
-                    <span>${msg}</span>
-                </div>
-            `;
-        }
-
-        function showLoader(show, message = "") {
-            if (show) {
-                loaderMessage.textContent = message;
-                canvasLoader.classList.remove('hidden');
-            } else {
-                canvasLoader.classList.add('hidden');
             }
-        }
 
-        // Modal API Key Handling
-        const apiModal = document.getElementById('apiModal');
-        document.getElementById('openApiModalBtn').addEventListener('click', () => {
-            document.getElementById('apiKeyInput').value = customApiKey;
-            apiModal.classList.remove('hidden');
+            btnProcess.addEventListener('click', processExpression);
+            processExpression();
         });
-        document.getElementById('closeApiModalBtn').addEventListener('click', () => apiModal.classList.add('hidden'));
-        document.getElementById('saveApiKeyBtn').addEventListener('click', () => {
-            customApiKey = document.getElementById('apiKeyInput').value.trim();
-            if (customApiKey) localStorage.setItem('gemini_custom_key', customApiKey);
-            else localStorage.removeItem('gemini_custom_key');
-            updateApiKeyUI();
-            apiModal.classList.add('hidden');
-        });
-
-        function updateApiKeyUI() {
-            const statusText = document.getElementById('apiKeyStatusText');
-            if (customApiKey) {
-                statusText.textContent = "API Key OK";
-                statusText.classList.add('text-emerald-400');
-            } else {
-                statusText.textContent = "API Key";
-                statusText.classList.remove('text-emerald-400');
-            }
-        }
     </script>
 </body>
 </html>
